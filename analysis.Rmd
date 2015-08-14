@@ -1,0 +1,115 @@
+---
+title: "Statisitics for data from Fig 2h Caillaud _et al_ PLoS Biology"
+author: "Dan MacLean"
+date: "13 August 2015"
+output: html_document
+---
+
+## Pre-processing
+
+Marie-Cecille Caillaud (MCC) sent me an Excel file of all the haemocytometry measurements she made - file `raw/MCC-Dan corrected.xslx`. The file annotates figures from the same biological replicates as colours which I can't parse programmatically. I therefore added columns to the sheet stating the replicate number. I also removed spaces in column headers and saved the file as `raw/MCC-Dan corrected Reps added.xlsx` and exported the sheet with the data to a csv file `fig_2h_data_manual.csv` which I can operate on programmatically and will use as my input.
+
+### Use some Python to get the data file into better shape
+```{python}
+header = []
+results = []
+with open('raw/fig_2h_data_manual.csv', 'r') as file:
+  for l in file:
+    l = l.rstrip('\r\n')
+    a = l.split(',')
+    if l.startswith("Rep"):
+      header = a
+    else:
+      for i in range(0,len(header),2):
+        rep,line,count = a[i],header[i+1],a[i+1]
+        if rep and line and count: ## if we have no empty values
+          results.append([rep,line,count])
+
+with open('data/reshaped_data.csv','w') as outfile:
+  outfile.write("Replicate,Line,Count\n")
+  for r in results:
+    outfile.write(",".join(r) + "\n") 
+```
+
+### Load data, reorder as per Figure 2H and do a straightforward plot
+```{r}
+library(ggplot2)
+data <- read.csv('data/reshaped_data.csv', header=TRUE)
+data$Replicate <- as.factor(data$Replicate)
+data$Line <- factor(data$Line, c("Col-0","Med15", "Med19-1","C1","C2","Med19a-2","GFP", "OE_med19-1","OE_med19-2","med25","Med21"))
+basic <- ggplot(data, aes(Line,Count))
+scatter <- basic + geom_jitter(aes(colour=Replicate),position = position_dodge(width=0.5)) + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+scatter
+```
+
+The data look ok, a few outliers in `Med19a-2` and `C1` that could affect summary statistics. Let's do some `qqplots` and see how  
+they lie.
+```{r}
+#qnorm is default distribution - we are testing for a normal distribution
+ggplot(data, aes(sample=Count)) + geom_jitter(stat="qq", aes(colour=Replicate) ) + facet_wrap( ~ Line, scales = "free_y")
+```
+
+Those outliers could mess up summary statistics, they're off the curve, we have no good reason to ditch them though. I suppose they mean that occasionally the method used (spore counting) throws up some very extreme numbers. Overall these plots are ok, the variation seems normally distributed on the whole.
+
+Let's have a look at summary statistics:
+```{r}
+library(plyr)
+summary <- ddply(data,"Line",summarise, mean=mean(Count),median=median(Count),diff=abs(mean(Count) - median(Count)), std_dev=sd(Count), std_err=sd(Count)/sqrt(length(Count)))
+summary
+```
+
+The summary stats seem fine overall, similar SD and SE and not much drift of the median from the mean, the concern again is `Med19a-2` and `C1` with the high standard deviation and mean dragged up by that couple of points.
+
+## Does a bar chart imply a higher effect than we see generally?
+Let's make a bar graph with error bars on that first scatter to see how using a standard bar chart might be misleading our thinking. 
+
+```{r}
+ggplot(summary, aes(x=Line, y=mean)) + geom_bar(position=position_dodge(), stat="identity", fill="steelblue",colour="black") + geom_errorbar(aes(ymin=mean-std_err, ymax=mean+std_err)) + theme(axis.text.x = element_text(angle = 90, hjust = 1)) 
+```
+
+The barchart is definitely suggesting a higher overall effect than we see from the individual replicates in the scatter plot for `Med19a-2` and `C1` My conclusion here is that although the mean is calculated correctly, it's just that the mean is a slightly misleading number to boil our data down to in this case. Also that very slight increase in standard error isn't giving us a clue as to that messy single outlier. Taken together the mean and SE plotted like this convince of us a bigger effect in general so the plot style isn't helpful. 
+
+## Significance Tests
+I need to boil down the data to the biological replicates.
+```{r}
+library(reshape)
+bioreps <- cast(data, Line~Replicate, mean)
+bioreps <- melt(bioreps)
+bioreps
+```
+
+I'll do an ANOVA and Tukey's HSD for multiple comparisons.
+```{r}
+### ANOVA and Tukey's HSD on all pairwise - though really only interested in VS Col-0 the control
+fit <- aov(lm(value ~ Line,data=bioreps))
+TukeyHSD(fit)               
+```
+
+A long table, but it's showing the overexpressers `OE_med19-1` and `OE_med19-2` are different from the `Col-0` control, as is the one with the noted high outliers `Med19a-2` and also `Med15`.
+
+## P-Hacking
+Let's see how removing those high (`>=150`) outliers affects the _p_-values, see if any signficance we have is coming from one or two atypical data.
+
+```{r}
+under_150 <- data[data$value < 150, ]
+bioreps_under150 <- cast(data, Line~Replicate, mean)
+bioreps_under150 <- melt(bioreps_under150)
+fit <- aov(lm(value ~ Line,data=bioreps_under150))
+TukeyHSD(fit)
+```
+
+Looks good! The same Lines come up as significant - the outliers aren't messing with the overall significance result.
+
+### More P-Hacking - ditching data originally in Figure 2H!
+
+According to MCC and JJ then the lines of interest are really the `med19-1`, `Med19a-2`, `OE_med19-1` and `OE_med19-2`. Let's do the same tests for the restricted set and see if it substantially affects the result.
+```{r}
+of_interest <- bioreps_under150[bioreps_under150$Line %in% c("Col-0", "Med19-1", "Med19a-2", "OE_med19-1", "OE_med19-2"), ]
+fit <- aov(lm(value ~ Line,data=of_interest))
+TukeyHSD(fit)
+```
+
+The result is not substantially different from before, the same lines show up as significantly different, that is `Med19a-2`, `OE_med19-1`, `OE_med19-2` and `Med15` are signifcantly different from the `Col-0` control. `Med19-1` is not.
+
+## Conclusion
+The Med19-2 and Med15 lines get significantly more spores than the Col-0 wild-type and the two over-expressors of Med19 show significantly fewer spores than Col-0. There is no evidence for difference from the wild-type and other lines. 
