@@ -10,11 +10,9 @@ This repository contains the Rmarkdown and KnitR'd html/docx/PDF detailing my re
 
 The repository is organised as follows:
 
-`raw/` - the Excel files as provided to me and some with manual cleaning up I had to do.
-`data/` - reorganised data file for easier R.
-`analysis.Rmd` - The executable R code of the analysis.
-`analysis.[html|pdf|docx]` - The rendered, executed R code in various formats.
-`figure.png` - a large pretty figure of the key plot in the analysis.
-`index.html` - a renamed `analysis.html` that allows github.io to render it for easy browsing of the report.
-
- 
++ `raw/` - the Excel files as provided to me and some with manual cleaning up I had to do.
++ `data/` - reorganised data file for easier R.
++ `analysis.Rmd` - The executable R code of the analysis.
++ `analysis.[html|pdf|docx]` - The rendered, executed R code in various formats.
++ `figure.png` - a large pretty figure of the key plot in the analysis.
++ `index.html` - a renamed `analysis.html` that allows github.io to render it for easy browsing of the report.
