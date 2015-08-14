@@ -1,5 +1,5 @@
 ---
-title: "Statisitics for data from Fig 2h Caillaud _et al_ PLoS Biology"
+title: "Statistics for data from Fig 2h Caillaud _et al_ PLoS Biology"
 author: "Dan MacLean"
 date: "13 August 2015"
 output: html_document
@@ -113,3 +113,10 @@ The result is not substantially different from before, the same lines show up as
 
 ## Conclusion
 The Med19-2 and Med15 lines get significantly more spores than the Col-0 wild-type and the two over-expressors of Med19 show significantly fewer spores than Col-0. There is no evidence for difference from the wild-type and other lines. 
+
+```{r,echo=FALSE}
+### Now produce a pretty version of the scatter plot and save to file
+library(ggthemes)
+pretty <- scatter + theme_few() + scale_colour_few() +  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+ggsave('figure.png', pretty)
+```
