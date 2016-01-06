@@ -2,7 +2,7 @@
 title: "Statistics for data from Fig 2h Caillaud _et al_ PLoS Biology"
 author: "Dan MacLean"
 date: "13 August 2015"
-output: html_document
+output: word_document
 ---
 
 ## Pre-processing
