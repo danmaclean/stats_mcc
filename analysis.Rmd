@@ -36,12 +36,14 @@ with open('data/reshaped_data.csv','w') as outfile:
 library(ggplot2)
 data <- read.csv('data/reshaped_data.csv', header=TRUE)
 data$Replicate <- as.factor(data$Replicate)
-data$Line <- factor(data$Line, c("Col-0","Med15", "Med19-1","C1","C2","Med19a-2","GFP", "OE_med19-1","OE_med19-2","med25","Med21"))
+data$Line <- factor(data$Line, c("Col-0","Med15", "Med19-1","C1","C2","Med19a-2","GFP", "OE_med19-1","OE_med19-2","Med25","med21"))
 basic <- ggplot(data, aes(Line,Count))
 scatter <- basic + geom_jitter(aes(colour=Replicate),position = position_dodge(width=0.5)) + theme(axis.text.x = element_text(angle = 90, hjust = 1))
 scatter
 ```
-
+```{r}
+data
+```
 The data look ok, a few outliers in `Med19a-2` and `C1` that could affect summary statistics. Let's do some `qqplots` and see how  
 they lie.
 ```{r}
